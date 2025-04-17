@@ -1,0 +1,9 @@
+# Ignorar dependencias descargadas
+node_modules/
+
+# Ignorar archivo de variables de entorno (si no quieres subirlo)
+.env
+
+# Puedes añadir otros archivos o carpetas que no quieras subir
+# Por ejemplo, los archivos .html de prueba si no los necesitas en GitHub:
+# *.html
