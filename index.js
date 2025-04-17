@@ -16,7 +16,7 @@ const manifest = {
     version: '1.1.0', 
     name: 'Pelis HD LATINO',
     description: 'Addon Para ver peliculas, series, animes y doramas de PelisPlus en español latino.',
-    logo: 'https://png.pngtree.com/element_our/20190603/ourlarge/pngtree-movie-board-icon-image_1455346.jpg',
+    logo: 'https://images.sftcdn.net/images/t_app-icon-m/p/67cbd601-cb92-40eb-8aea-ac758afec92c/1635940076/pelisplus-ver-peliculas-series-wm0-logo',
     idPrefixes: [ 'pplus:' ],
     resources: [ 'catalog', 'meta', 'stream' ],
     types: ['movie', 'series'],
