@@ -45,111 +45,143 @@ const CATALOG_MAP = {
 
 // Selectores para el catálogo (estos funcionan bien)
 const SELECTORS = {
-    catalog: {
+    catalog: { // Tus selectores de catálogo (sin cambios respecto a tu original)
         itemContainer: 'article.item',
         linkElement: 'a.itemA',
         titleElement: 'h2',
         posterElement: 'div.item__image img',
-        posterAttribute: 'data-src',
+        posterAttribute: 'data-src', // Usar data-src según el HTML de la API
         pathAttribute: 'href'
     },
-    search: { // Selectores CORREGIDOS para búsqueda basados en el último log HTML
-        itemContainer: 'article.item.liste', // Contenedor: article con clases item Y liste
-        linkElement: 'a.itemA',              // Enlace dentro del contenedor
-        titleElement: 'h2',                  // Título (es h2, no h3) dentro del enlace
-        posterElement: 'div.item__image img',// Imagen (más específico)
-        posterAttribute: 'data-src',         // Atributo para la URL del poster (correcto)
-        pathAttribute: 'href'                // Atributo para el path (correcto)
+    search: { // Selectores que coinciden con el HTML de /api/search/
+        itemContainer: 'article.item.liste', // Contenedor principal del snippet
+        linkElement: 'a.itemA',             // El enlace SÍ tiene clase itemA en la API
+        titleElement: 'h2',                 // h2 dentro del enlace
+        posterElement: 'div.item__image img', // La imagen
+        posterAttribute: 'data-src',        // Usar data-src según el HTML de la API
+        pathAttribute: 'href'               // El atributo href del enlace
     }
 };
 
 const ITEMS_PER_PAGE = 24;
 
-// --- HANDLER DE CATÁLOGO (con Selectores de Búsqueda Corregidos y Logs Limpios) ---
+// --- HANDLER DE CATÁLOGO (Corregido 'Assignment to constant variable') ---
 builder.defineCatalogHandler(async (args) => {
-    const { type, id, extra } = args;
-    const searchQuery = extra?.search;
-    const skipRaw = extra?.skip;
-    const skip = parseInt(skipRaw || '0', 10);
+	const { type, id, extra } = args;
+	const searchQuery = extra?.search;
+	const skipRaw = extra?.skip;
+	const skip = parseInt(skipRaw || '0', 10);
 
-    console.log(`>>> Solicitud Catálogo: type=${type}, id=${id}, skip=${skip}, search='${searchQuery || ''}'`);
 
-    const metas = [];
+	// --- CAMBIO CLAVE: Declarar 'metas' con 'let' para poder reasignarla ---
+	let metas = []; // Usar 'let' en lugar de 'const'
 
-    if (searchQuery) {
-        // ========== LÓGICA DE BÚSQUEDA ==========
-        console.log(`   [${id}] Iniciando búsqueda para: "${searchQuery}"`);
-        const searchUrl = `${PELISPLUS_DOMAIN}/search/${encodeURIComponent(searchQuery)}`;
-        console.log(`   [${id}] Buscando en URL: ${searchUrl}`);
 
-        try {
-            const response = await axios.get(searchUrl, {
-                headers: { /* ... tus headers ... */
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                 },
-                 timeout: 15000
-            });
-            const html = response.data;
-            const $ = load(html);
-            // console.log(`   [${id}] HTML de búsqueda descargado.`); // Log reducido
+	console.log(`>>> Solicitud Catálogo: type=<span class="math-inline">\{type\}, id\=</span>{id}, skip=<span class="math-inline">\{skip\}, search\='</span>{searchQuery || ''}'`);
 
-            // Usar los selectores CORREGIDOS de búsqueda
-            const searchSelectors = SELECTORS.search;
-            const itemContainers = $(searchSelectors.itemContainer); // Seleccionar contenedores
 
-            console.log(`   [${id}] Parseando HTML con selector '${searchSelectors.itemContainer}'. Encontrados: ${itemContainers.length}`); // Log de conteo
+	if (searchQuery) {
+		// ========== LÓGICA DE BÚSQUEDA (Usando API /api/search/) ==========
+		console.log(`   [<span class="math-inline">\{id\}\] Iniciando búsqueda API para\: "</span>{searchQuery}"`);
 
-            itemContainers.each((i, element) => { // Iterar sobre los contenedores encontrados
-                const $container = $(element);
-                // Buscar elementos DENTRO del contenedor actual
-                const linkElement = $container.find(searchSelectors.linkElement);
-                const titleElement = linkElement.find(searchSelectors.titleElement); // Buscar h2 dentro del enlace
-                const posterElement = $container.find(searchSelectors.posterElement); // Buscar img dentro del div.item__image
 
-                const path = linkElement.attr(searchSelectors.pathAttribute);
-                const title = titleElement.text().trim();
-                let poster = posterElement.attr(searchSelectors.posterAttribute) || posterElement.attr('src');
-                 if (poster && poster.startsWith('//')) { poster = `https:${poster}`; }
+		// --- Logs de Depuración (Opcional, puedes comentarlos si ya funciona) ---
+		console.log(`       DEBUG: Valor PELISPLUS_DOMAIN = "${PELISPLUS_DOMAIN}"`);
+		console.log(`       DEBUG: Valor searchQuery = "${searchQuery}"`);
+		const encodedQueryForDebug = encodeURIComponent(searchQuery);
+		console.log(`       DEBUG: Valor encodeURIComponent(searchQuery) = "${encodedQueryForDebug}"`);
+		// --- Fin Logs de Depuración ---
 
-                if (path && title && poster) {
-                    try {
-                        const absolutePath = path.startsWith('http') ? path : `${PELISPLUS_DOMAIN}${path.startsWith('/') ? path : '/' + path}`;
-                        const urlObject = new URL(absolutePath);
-                        const pathSegments = urlObject.pathname.split('/').filter(Boolean);
-                        const typeFromPath = pathSegments[0];
 
-                        let resultType = '';
-                        if (typeFromPath === 'pelicula') {
-                            resultType = 'movie';
-                        } else if (['serie', 'anime'].includes(typeFromPath)) {
-                             resultType = 'series';
-                            } else { return; } // Saltar si no es tipo conocido
+		// Construcción de la URL (Asegúrate que usa backticks `)
+		const searchUrl = `${PELISPLUS_DOMAIN}/api/search/${encodedQueryForDebug}`;
+		console.log(`   [${id}] Buscando en URL de API: ${searchUrl}`);
 
-                            if (resultType !== type) { return; } // Saltar si no coincide con el tipo del catálogo
 
-                        const slug = pathSegments.slice(1).join(':');
-                        const internalId = `pplus:${typeFromPath}:${slug}`;
+		try {
+			const response = await axios.get(searchUrl, {
+				headers: {
+					'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36',
+					'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
+					'Accept-Language': 'en-US,en;q=0.9',
+					'Referer': `${PELISPLUS_DOMAIN}/`
+				 },
+				 timeout: 15000
+			});
 
-                        metas.push({
-                            id: internalId,
-                            type: resultType,
-                            name: title,
-                            poster: poster
-                        });
-                    } catch (urlError) {
-                         console.warn(`   [${id}] Error parseando URL/ID en búsqueda: ${path}`, urlError.message);
-                    }
-                }
-            });
-            console.log(`   [${id}] Búsqueda finalizada. Resultados parseados: ${metas.length}`);
 
-        } catch (error) {
-            console.error(`   ❌ [${id}] ERROR Axios/Cheerio en Búsqueda para "${searchQuery}":`, error.message);
-             if (error.response) { console.error(`       -> Status: ${error.response.status}`); }
-            return Promise.resolve({ metas: [] });
-        }
+			console.log(`   [${id}] Respuesta API recibida. Status: ${response.status}`);
+			const htmlSnippet = response.data;
+			const $ = load(htmlSnippet);
+			const searchSelectors = SELECTORS.search;
+			const itemContainers = $(searchSelectors.itemContainer);
+
+
+			console.log(`   [${id}] Parseando Snippet HTML con selector '${searchSelectors.itemContainer}'. Encontrados: ${itemContainers.length}`);
+
+
+			// --- ESTA LÍNEA AHORA ES VÁLIDA porque 'metas' se declaró con 'let' ---
+			metas = []; // Reiniciar/limpiar el array 'metas' ANTES de añadir resultados de búsqueda
+
+
+			itemContainers.each((i, element) => {
+				const $container = $(element);
+				const linkElement = $container.find(searchSelectors.linkElement);
+				const titleElement = linkElement.find(searchSelectors.titleElement);
+				const posterElement = $container.find(searchSelectors.posterElement);
+				const path = linkElement.attr(searchSelectors.pathAttribute);
+				const title = titleElement.text().trim();
+				let poster = posterElement.attr(searchSelectors.posterAttribute); // data-src
+				 if (poster && poster.startsWith('//')) { poster = `https:${poster}`; }
+				 if (!poster) { poster = posterElement.attr('src'); } // Fallback
+				 if (poster && poster.startsWith('//')) { poster = `https:${poster}`; }
+				 if (poster && poster.includes('/images/placever.jpg')) { poster = null; } // Ignorar placeholder
+
+
+				if (path && title && poster) {
+					try {
+						const absolutePath = path.startsWith('http') ? path : `${PELISPLUS_DOMAIN}${path.startsWith('/') ? path : '/' + path}`;
+						const urlObject = new URL(absolutePath);
+						const pathSegments = urlObject.pathname.split('/').filter(Boolean);
+						const typeFromPath = pathSegments[0];
+						let resultType = '';
+
+
+						if (typeFromPath === 'pelicula') { resultType = 'movie'; }
+						else if (['serie', 'anime', 'dorama'].includes(typeFromPath)) { resultType = 'series'; }
+						else {
+							console.warn(`[${id}] Tipo desconocido '${typeFromPath}' en path API: ${path}. Saltando.`);
+							return; // Saltar este item
+						}
+
+
+						// Filtro de tipo (comentado para búsqueda global)
+						// if (resultType !== type) { return; }
+
+
+						const slug = pathSegments.slice(1).join(':');
+						const internalId = `pplus:${typeFromPath}:${slug}`;
+
+
+						// Añadir al array 'metas' (que ahora es 'let')
+						metas.push({ id: internalId, type: resultType, name: title, poster: poster });
+
+
+					} catch (urlError) {
+						 console.warn(`   [${id}] Error parseando URL/ID '${path}' en búsqueda API:`, urlError.message);
+					}
+				}
+			}); // Fin .each
+			console.log(`   [${id}] Búsqueda API finalizada. Resultados parseados: ${metas.length}`);
+
+
+		} catch (error) {
+			// El error 'Assignment to constant variable' ya no debería ocurrir aquí
+			console.error(`   ❌ [${id}] ERROR en Búsqueda API para "${searchQuery}":`, error.message);
+			 if (error.response) { console.error(`       -> Status API: ${error.response.status}`); }
+			 // En caso de error, 'metas' se quedará como [] porque se reinició antes del try
+		}
+
 
     } else {
         // ========== LÓGICA DE NAVEGACIÓN (CATÁLOGO NORMAL - SIN CAMBIOS) ==========
